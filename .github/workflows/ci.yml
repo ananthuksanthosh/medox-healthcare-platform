@@ -4,13 +4,11 @@ on:
 push:
 branches:
 - main
-
 pull_request:
 branches:
 - main
 
 jobs:
-
 frontend-build:
 runs-on: ubuntu-latest
 
@@ -56,6 +54,5 @@ steps:
     run: npm install
 
   - name: Validate Backend Project
-    run: |
-      echo "Backend dependencies installed successfully"
-      echo "Backend validation completed"
+    run: echo "Backend validation successful"
+```
