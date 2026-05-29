@@ -1,55 +1,42 @@
 name: MEDOX CI Pipeline
 
 on:
-push:
-branches:
-- main
-pull_request:
-branches:
-- main
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-frontend-build:
-runs-on: ubuntu-latest
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
 
-defaults:
-  run:
-    working-directory: frontend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-steps:
-  - name: Checkout Repository
-    uses: actions/checkout@v4
+      - run: npm install
 
-  - name: Setup Node.js
-    uses: actions/setup-node@v4
-    with:
-      node-version: 20
+      - run: npm run build
 
-  - name: Install Frontend Dependencies
-    run: npm install
+  backend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
 
-  - name: Build Frontend
-    run: npm run build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-backend-build:
-runs-on: ubuntu-latest
+      - run: npm install
 
-
-defaults:
-  run:
-    working-directory: backend
-
-steps:
-  - name: Checkout Repository
-    uses: actions/checkout@v4
-
-  - name: Setup Node.js
-    uses: actions/setup-node@v4
-    with:
-      node-version: 20
-
-  - name: Install Backend Dependencies
-    run: npm install
-
-  - name: Validate Backend Project
-    run: echo "Backend validation successful"
+      - run: echo "Backend validation successful"
