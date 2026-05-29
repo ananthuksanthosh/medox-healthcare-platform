@@ -12,7 +12,6 @@ jobs:
 frontend-build:
 runs-on: ubuntu-latest
 
-```
 defaults:
   run:
     working-directory: frontend
@@ -31,12 +30,11 @@ steps:
 
   - name: Build Frontend
     run: npm run build
-```
 
 backend-build:
 runs-on: ubuntu-latest
 
-```
+
 defaults:
   run:
     working-directory: backend
@@ -55,4 +53,3 @@ steps:
 
   - name: Validate Backend Project
     run: echo "Backend validation successful"
-```
