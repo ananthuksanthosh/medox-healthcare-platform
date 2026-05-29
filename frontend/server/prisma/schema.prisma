@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model appointment {
+  id                               String             @id @default(cuid())
+  patientId                        String
+  doctorId                         String
+  date                             DateTime
+  time                             String
+  status                           appointment_status @default(PENDING)
+  type                             String             @default("in-person")
+  fee                              Float
+  tokenNumber                      Int                @default(1)
+  reason                           String?
+  createdAt                        DateTime           @default(now())
+  updatedAt                        DateTime           @updatedAt
+  user_appointment_doctorIdTouser  user               @relation("appointment_doctorIdTouser", fields: [doctorId], references: [id], map: "Appointment_doctorId_fkey")
+  user_appointment_patientIdTouser user               @relation("appointment_patientIdTouser", fields: [patientId], references: [id], map: "Appointment_patientId_fkey")
+  payment                          payment?
+  prescription                     prescription?
+
+  @@index([doctorId], map: "Appointment_doctorId_fkey")
+  @@index([patientId], map: "Appointment_patientId_fkey")
+}
+
+model department {
+  id            String          @id @default(cuid())
+  name          String
+  icon          String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  doctorprofile doctorprofile[]
+}
+
+model doctorprofile {
+  id              String      @id @default(cuid())
+  userId          String      @unique(map: "DoctorProfile_userId_key")
+  specialization  String
+  experience      Int
+  consultationFee Float
+  rating          Float       @default(4.5)
+  availability    Boolean     @default(true)
+  education       String?
+  languages       String?
+  gender          String?     @default("Male")
+  departmentId    String?
+  hospitalId      String?
+  weeklySchedule  String?     @db.Text
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  department      department? @relation(fields: [departmentId], references: [id], map: "DoctorProfile_departmentId_fkey")
+  hospital        hospital?   @relation(fields: [hospitalId], references: [id], map: "DoctorProfile_hospitalId_fkey")
+  user            user        @relation(fields: [userId], references: [id], onDelete: Cascade, map: "DoctorProfile_userId_fkey")
+
+  @@index([departmentId], map: "DoctorProfile_departmentId_fkey")
+  @@index([hospitalId], map: "DoctorProfile_hospitalId_fkey")
+}
+
+model doctorrequest {
+  id              String   @id @default(cuid())
+  name            String
+  email           String
+  phone           String
+  specialization  String
+  department      String
+  hospital        String
+  experience      Int
+  consultationFee Float
+  status          String   @default("PENDING")
+  createdAt       DateTime @default(now())
+}
+
+model hospital {
+  id            String          @id @default(cuid())
+  name          String
+  district      String
+  address       String
+  phone         String?
+  email         String?
+  rating        Float           @default(4.5)
+  beds          Int             @default(100)
+  established   Int             @default(2000)
+  image         String          @default("/hospitals/aster.jpg")
+  featured      Boolean         @default(false)
+  status        String          @default("VERIFIED")
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  doctorprofile doctorprofile[]
+}
+
+model medicalrecord {
+  id           String   @id @default(cuid())
+  patientId    String
+  title        String
+  type         String
+  doctorName   String
+  hospitalName String
+  date         DateTime @default(now())
+  description  String?  @db.Text
+  fileSize     String
+  fileUrl      String
+  status       String   @default("normal")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         user     @relation(fields: [patientId], references: [id], onDelete: Cascade, map: "MedicalRecord_patientId_fkey")
+
+  @@index([patientId], map: "MedicalRecord_patientId_fkey")
+}
+
+model notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String   @db.Text
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Notification_userId_fkey")
+
+  @@index([userId], map: "Notification_userId_fkey")
+}
+
+model patientprofile {
+  id         String    @id @default(cuid())
+  userId     String    @unique(map: "PatientProfile_userId_key")
+  age        Int?
+  address    String?
+  bloodGroup String?
+  gender     String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  dob        DateTime?
+  user       user      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "PatientProfile_userId_fkey")
+}
+
+model payment {
+  id            String       @id @default(cuid())
+  appointmentId String?      @unique(map: "Payment_appointmentId_key")
+  patientId     String
+  billId        String       @unique(map: "Payment_billId_key")
+  hospitalName  String
+  doctorName    String
+  treatment     String
+  date          DateTime     @default(now())
+  amount        Float
+  method        String       @default("UPI")
+  status        String       @default("paid")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  appointment   appointment? @relation(fields: [appointmentId], references: [id], map: "Payment_appointmentId_fkey")
+  user          user         @relation(fields: [patientId], references: [id], map: "Payment_patientId_fkey")
+
+  @@index([patientId], map: "Payment_patientId_fkey")
+}
+
+model prescription {
+  id                                String       @id @default(cuid())
+  appointmentId                     String?      @unique(map: "Prescription_appointmentId_key")
+  patientId                         String
+  doctorId                          String
+  date                              DateTime     @default(now())
+  diagnosis                         String
+  status                            String       @default("active")
+  medications                       String       @db.Text
+  refillsRemaining                  Int          @default(0)
+  validUntil                        DateTime
+  createdAt                         DateTime     @default(now())
+  updatedAt                         DateTime     @updatedAt
+  appointment                       appointment? @relation(fields: [appointmentId], references: [id], map: "Prescription_appointmentId_fkey")
+  user_prescription_doctorIdTouser  user         @relation("prescription_doctorIdTouser", fields: [doctorId], references: [id], map: "Prescription_doctorId_fkey")
+  user_prescription_patientIdTouser user         @relation("prescription_patientIdTouser", fields: [patientId], references: [id], map: "Prescription_patientId_fkey")
+
+  @@index([doctorId], map: "Prescription_doctorId_fkey")
+  @@index([patientId], map: "Prescription_patientId_fkey")
+}
+
+model user {
+  id                                        String          @id @default(cuid())
+  email                                     String          @unique(map: "User_email_key")
+  password                                  String
+  name                                      String
+  phone                                     String?
+  role                                      user_role       @default(PATIENT)
+  status                                    String          @default("ACTIVE")
+  createdAt                                 DateTime        @default(now())
+  updatedAt                                 DateTime        @updatedAt
+  appointment_appointment_doctorIdTouser    appointment[]   @relation("appointment_doctorIdTouser")
+  appointment_appointment_patientIdTouser   appointment[]   @relation("appointment_patientIdTouser")
+  doctorprofile                             doctorprofile?
+  medicalrecord                             medicalrecord[]
+  notification                              notification[]
+  patientprofile                            patientprofile?
+  payment                                   payment[]
+  prescription_prescription_doctorIdTouser  prescription[]  @relation("prescription_doctorIdTouser")
+  prescription_prescription_patientIdTouser prescription[]  @relation("prescription_patientIdTouser")
+}
+
+enum appointment_status {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum user_role {
+  PATIENT
+  DOCTOR
+  ADMIN
+}

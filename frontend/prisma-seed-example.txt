@@ -1,0 +1,127 @@
+import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
+
+const prisma = new PrismaClient()
+
+async function main() {
+  console.log('Seeding demo accounts and data...')
+
+  // 1. Password hashing for demo accounts
+  const hashedDemoPassword = await bcrypt.hash('trial123', 10)
+  const hashedAdminPassword = await bcrypt.hash('admin123', 10)
+
+  // 2. Create Trial Patient Account
+  const trialPatient = await prisma.user.upsert({
+    where: { email: 'trialpatient@medibee.com' },
+    update: {},
+    create: {
+      email: 'trialpatient@medibee.com',
+      password: hashedDemoPassword,
+      name: 'Trial Patient',
+      role: 'PATIENT',
+      phone: '+1-555-0100',
+    },
+  })
+
+  // 3. Create Trial Doctor Account
+  const trialDoctor = await prisma.user.upsert({
+    where: { email: 'trialdoctor@medibee.com' },
+    update: {},
+    create: {
+      email: 'trialdoctor@medibee.com',
+      password: hashedDemoPassword,
+      name: 'Dr. Trial',
+      role: 'DOCTOR',
+      phone: '+1-555-0101',
+      // Assuming you have a Doctor profile relation
+      doctorProfile: {
+        create: {
+          specialization: 'Cardiology',
+          experience: 10,
+          consultationFee: 500,
+          availability: true,
+        }
+      }
+    },
+  })
+
+  // 4. Create Admin Account
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@medibee.com' },
+    update: {},
+    create: {
+      email: 'admin@medibee.com',
+      password: hashedAdminPassword,
+      name: 'Admin',
+      role: 'ADMIN',
+      phone: '+1-555-0102',
+    },
+  })
+
+  // 5. Seed specific demo data ONLY linked to Trial Patient & Trial Doctor
+  
+  // Clear old demo data to prevent duplicates (optional depending on schema constraints)
+  await prisma.appointment.deleteMany({
+    where: { OR: [{ patientId: trialPatient.id }, { doctorId: trialDoctor.id }] }
+  })
+
+  // Create demo appointment 1 (Trial Patient <-> Trial Doctor)
+  await prisma.appointment.create({
+    data: {
+      patientId: trialPatient.id,
+      doctorId: trialDoctor.id,
+      date: new Date(new Date().setDate(new Date().getDate() + 2)), // 2 days from now
+      time: '10:00 AM',
+      status: 'CONFIRMED',
+      type: 'CONSULTATION',
+      department: 'Cardiology',
+      hospital: 'MediBee Main Hospital',
+    }
+  })
+
+  // Create demo appointment 2 (Trial Patient <-> Other dummy doctor or same doctor)
+  await prisma.appointment.create({
+    data: {
+      patientId: trialPatient.id,
+      doctorId: trialDoctor.id, // Using same trial doctor to ensure data shows up on both demo dashboards
+      date: new Date(new Date().setDate(new Date().getDate() - 5)), // 5 days ago
+      time: '02:30 PM',
+      status: 'COMPLETED',
+      type: 'FOLLOW_UP',
+      department: 'Cardiology',
+      hospital: 'MediBee Main Hospital',
+      // Attach demo prescription
+      prescription: {
+        create: {
+          medicines: 'Aspirin 75mg once daily',
+          notes: 'Take after meals',
+        }
+      }
+    }
+  })
+
+  // Create demo report for Trial Patient
+  await prisma.medicalReport.create({
+    data: {
+      patientId: trialPatient.id,
+      title: 'ECG Scan Results',
+      date: new Date(new Date().setDate(new Date().getDate() - 5)),
+      fileUrl: '/demo-reports/ecg-scan.pdf',
+      type: 'SCAN',
+    }
+  })
+
+  console.log('Demo accounts seeded successfully:')
+  console.log(' - trialpatient@medibee.com')
+  console.log(' - trialdoctor@medibee.com')
+  console.log(' - admin@medibee.com')
+}
+
+main()
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })

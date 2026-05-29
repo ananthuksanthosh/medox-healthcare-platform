@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int             @id @default(autoincrement())
+  name          String
+  email         String          @unique
+  password      String
+  role          String          @default("PATIENT")
+  phone         String?
+  address       String?
+  gender        String?
+  dob           DateTime?
+  profilePic    String?
+  status        String          @default("ACTIVE")
+  bloodGroup    String?         @default("—")
+  createdAt     DateTime        @default(now())
+
+  doctorProfile Doctor?
+  appointments  Appointment[]   @relation("PatientAppointments")
+  reports       MedicalReport[]
+}
+
+
+model Hospital {
+  id          Int          @id @default(autoincrement())
+  name        String
+  district    String
+  address     String
+  phone       String
+  rating      Float        @default(4.5)
+  email       String       @default("info@hospital.com")
+  status      String       @default("VERIFIED")
+  image       String       @default("/hospitals/kims.jpg")
+
+  departments Department[]
+  doctors     Doctor[]
+}
+
+model Department {
+  id          Int       @id @default(autoincrement())
+  name        String
+
+  hospitalId  Int
+  hospital    Hospital  @relation(fields: [hospitalId], references: [id])
+
+  doctors     Doctor[]
+}
+
+model Doctor {
+  id              Int            @id @default(autoincrement())
+  specialization  String
+  experience      Int
+  consultationFee Float
+  availability    Boolean        @default(true)
+  bio             String?
+  qualification   String         @default("MBBS, MD")
+  status          String         @default("ACTIVE")
+  image           String         @default("/doctors/doctor1.jpg")
+
+  userId          Int            @unique
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  hospitalId      Int
+  hospital        Hospital       @relation(fields: [hospitalId], references: [id])
+
+  departmentId    Int
+  department      Department     @relation(fields: [departmentId], references: [id])
+
+  appointments    Appointment[]  @relation("DoctorAppointments")
+  prescriptions   Prescription[]
+  slots           TimeSlot[]
+}
+
+model Appointment {
+  id              Int          @id @default(autoincrement())
+  appointmentDate DateTime
+  status          String       @default("BOOKED")
+  type            String       @default("IN_PERSON")
+  reason          String?
+  tokenNumber     Int?
+  notes           String?
+  createdAt       DateTime     @default(now())
+
+  patientId     Int
+  patient       User         @relation("PatientAppointments", fields: [patientId], references: [id], onDelete: Cascade)
+
+  doctorId      Int
+  doctor        Doctor       @relation("DoctorAppointments", fields: [doctorId], references: [id])
+
+  payment       Payment?
+  prescription  Prescription?
+}
+
+model Payment {
+  id              Int          @id @default(autoincrement())
+  amount          Float
+  paymentStatus   String       @default("PENDING")
+  paymentMethod   String       @default("ONLINE")
+  transactionId   String       @default("")
+  createdAt       DateTime     @default(now())
+
+  appointmentId   Int          @unique
+  appointment     Appointment  @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+}
+
+model Prescription {
+  id              Int          @id @default(autoincrement())
+  notes           String
+  medicines       String       @db.Text
+  diagnosis       String       @default("")
+  createdAt       DateTime     @default(now())
+
+  appointmentId   Int?         @unique
+  appointment     Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  doctorId        Int
+  doctor          Doctor       @relation(fields: [doctorId], references: [id])
+}
+
+model MedicalReport {
+  id            Int        @id @default(autoincrement())
+  title         String     @default("")
+  reportType    String     @default("general")
+  description   String     @default("")
+  fileUrl       String
+  uploadedAt    DateTime   @default(now())
+
+  userId        Int
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TimeSlot {
+  id            Int       @id @default(autoincrement())
+  slotTime      String
+  dayOfWeek     String    @default("Monday")
+  isBooked      Boolean   @default(false)
+
+  doctorId      Int
+  doctor        Doctor    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  timestamp  DateTime @default(now())
+  eventType  String   // e.g., "LOGIN_SUCCESS", "LOGIN_FAILURE", "UNAUTHORIZED_ACCESS", "RATE_LIMIT_TRIGGERED", "REPORT_UPLOAD", "REPORT_DOWNLOAD", "PRESCRIPTION_CREATED", etc.
+  userEmail  String?
+  role       String?
+  ipAddress  String?
+  device     String?  @default("Unknown")
+  browser    String?  @default("Unknown")
+  severity   String   @default("INFO") // INFO, WARNING, CRITICAL
+  status     String   @default("SUCCESS") // SUCCESS, FAILURE
+  details    String?  @db.Text
+}
+
